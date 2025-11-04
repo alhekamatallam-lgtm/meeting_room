@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نظام إدارة وحجز قاعات الاجتماعات</title>
+    <link rel="icon" type="image/png" href="https://cdn.prod.website-files.com/5ee0d0c8efb107a26419bf01/5ee0d97bc8ef9ba80c03b6fb_Logo_02.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'primary': '#0A1D3D',
+              'secondary': '#00A89C',
+              'text-dark': '#4B4B4B',
+              'background': '#FFFFFF',
+              'light-gray': '#f4f6f9'
+            },
+            fontFamily: {
+              'cairo': ['Cairo', 'sans-serif']
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-light-gray font-cairo">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
