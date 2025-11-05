@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Booking } from '../types';
-import { ClockIcon, UsersIcon } from './icons/Icons';
+import { ClockIcon, UsersIcon, ZoomInIcon, ZoomOutIcon, ZoomResetIcon } from './icons/Icons';
 
 interface TodayBookingsProps {
   bookings: Booking[];
@@ -112,6 +112,12 @@ const normalizeDate = (dateStr: string): string => {
 };
 
 const TodayBookings: React.FC<TodayBookingsProps> = ({ bookings }) => {
+    const [zoomLevel, setZoomLevel] = useState(1);
+
+    const handleZoomIn = () => setZoomLevel(prev => prev + 0.1);
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.1));
+    const handleZoomReset = () => setZoomLevel(1);
+
     const groupedBookings = useMemo(() => {
         const today = new Date();
         const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -145,7 +151,14 @@ const TodayBookings: React.FC<TodayBookingsProps> = ({ bookings }) => {
         <div className="space-y-8">
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <h1 className="text-3xl font-bold text-primary">حجوزات اليوم</h1>
-                <p className="text-lg font-semibold text-gray-500">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <p className="text-lg font-semibold text-gray-500">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg shadow-sm border">
+                        <button onClick={handleZoomIn} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="تكبير"><ZoomInIcon/></button>
+                        <button onClick={handleZoomOut} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="تصغير"><ZoomOutIcon/></button>
+                        <button onClick={handleZoomReset} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="إعادة تعيين"><ZoomResetIcon/></button>
+                    </div>
+                </div>
             </div>
 
             {rooms.length === 0 ? (
@@ -154,37 +167,39 @@ const TodayBookings: React.FC<TodayBookingsProps> = ({ bookings }) => {
                     <p className="mt-4 text-xl text-gray-500">لا توجد حجوزات لهذا اليوم.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 items-start">
-                    {rooms.map((room) => (
-                        <div key={room} className="bg-white rounded-lg shadow-md flex flex-col h-full">
-                            <h2 className="text-xl font-bold text-white bg-primary p-4 rounded-t-lg">{room}</h2>
-                            <div className="p-4 space-y-4 flex-1">
-                                {groupedBookings[room].map(booking => (
-                                    <div key={booking['رقم الحجز']} className="border rounded-lg p-4 transition-shadow hover:shadow-lg bg-light-gray">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-primary">{booking['عنوان الاجتماع']}</h3>
-                                                <p className="text-sm text-gray-600">{booking['الإدارة']} / {booking['اسم الموظف']}</p>
+                <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top right', transition: 'transform 0.2s ease-out' }}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 items-start">
+                        {rooms.map((room) => (
+                            <div key={room} className="bg-white rounded-lg shadow-md flex flex-col h-full">
+                                <h2 className="text-xl font-bold text-white bg-primary p-4 rounded-t-lg">{room}</h2>
+                                <div className="p-4 space-y-4 flex-1">
+                                    {groupedBookings[room].map(booking => (
+                                        <div key={booking['رقم الحجز']} className="border rounded-lg p-4 transition-shadow hover:shadow-lg bg-light-gray">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-primary">{booking['عنوان الاجتماع']}</h3>
+                                                    <p className="text-sm text-gray-600">{booking['الإدارة']} / {booking['اسم الموظف']}</p>
+                                                </div>
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusChip(booking['الحالة'])}`}>
+                                                    {booking['الحالة']}
+                                                </span>
                                             </div>
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusChip(booking['الحالة'])}`}>
-                                                {booking['الحالة']}
-                                            </span>
+                                            <div className="mt-4 flex items-center justify-between text-sm text-text-dark">
+                                                <div className="flex items-center gap-2 font-semibold">
+                                                    <ClockIcon />
+                                                    <span className="font-mono tracking-wider">{`${formatTime(booking['من الساعة'])} - ${formatTime(booking['إلى الساعة'])}`}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <UsersIcon />
+                                                    <span>{booking['عدد الحضور']} حضور</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="mt-4 flex items-center justify-between text-sm text-text-dark">
-                                            <div className="flex items-center gap-2 font-semibold">
-                                                <ClockIcon />
-                                                <span className="font-mono tracking-wider">{`${formatTime(booking['من الساعة'])} - ${formatTime(booking['إلى الساعة'])}`}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <UsersIcon />
-                                                <span>{booking['عدد الحضور']} حضور</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
