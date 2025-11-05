@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewType } from '../types';
-import { DashboardIcon, BookingsIcon, HospitalityIcon, RoomsIcon, AdminIcon, SidebarToggleIcon, RefreshIcon } from './icons/Icons';
+import { DashboardIcon, BookingsIcon, HospitalityIcon, RoomsIcon, AdminIcon, SidebarToggleIcon, RefreshIcon, TodayIcon } from './icons/Icons';
 
 interface SidebarProps {
   activeView: ViewType;
@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isCollapsed, onT
   const navItems = [
     { id: 'dashboard', label: 'لوحة المؤشرات', icon: <DashboardIcon /> },
     { id: 'bookings', label: 'الحجوزات', icon: <BookingsIcon /> },
+    { id: 'today', label: 'حجوزات اليوم', icon: <TodayIcon /> },
     { id: 'hospitality', label: 'الضيافة', icon: <HospitalityIcon /> },
     { id: 'rooms', label: 'القاعات', icon: <RoomsIcon /> },
     { id: 'admin', label: 'إدارة الحجوزات', icon: <AdminIcon /> },

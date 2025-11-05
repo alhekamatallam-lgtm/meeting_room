@@ -9,6 +9,7 @@ import Rooms from './components/Rooms';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
+import TodayBookings from './components/TodayBookings';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('dashboard');
@@ -158,6 +159,8 @@ const App: React.FC = () => {
         return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
       case 'bookings':
         return <Bookings initialBookings={data.Bookings} rooms={data.Rooms} hospitality={data.Hospitality} onAddBooking={handleAddBooking} onUpdateBooking={handleUpdateBooking} isSubmitting={isSubmitting} />;
+      case 'today':
+        return <TodayBookings bookings={data.Bookings} />;
       case 'hospitality':
         return <Hospitality hospitalityData={data.Hospitality} />;
       case 'rooms':

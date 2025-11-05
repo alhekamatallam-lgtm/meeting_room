@@ -71,11 +71,91 @@ const formatTime = (timeString: string): string => {
     return timeString;
 };
 
+// A highly robust date/time parser to handle various formats from the database.
+const parseDateTime = (dateStr?: string, timeStr?: string): Date | null => {
+    if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') {
+        return null;
+    }
+
+    try {
+        let year, month, day;
+
+        const dateParts = dateStr.split(/[-/]/);
+        if (dateParts.length !== 3) {
+            console.warn('Invalid date parts:', dateStr);
+            return null;
+        }
+
+        if (dateParts[0].length === 4) { // YYYY-MM-DD
+            year = parseInt(dateParts[0], 10);
+            month = parseInt(dateParts[1], 10) - 1;
+            day = parseInt(dateParts[2], 10);
+        } else { // DD/MM/YYYY
+            day = parseInt(dateParts[0], 10);
+            month = parseInt(dateParts[1], 10) - 1;
+            year = parseInt(dateParts[2], 10);
+        }
+
+        let hour, minute;
+        const cleanedTimeStr = timeStr.replace(/[\u200F\u202B]/g, '').trim();
+        const timeMatch = cleanedTimeStr.match(/(\d+):(\d+)\s*(AM|PM|م|ص)?/i);
+
+        if (!timeMatch) {
+            // Handle full ISO date string from Sheets time
+            if (cleanedTimeStr.includes('T') && cleanedTimeStr.includes('Z')) {
+                const d = new Date(cleanedTimeStr);
+                if (!isNaN(d.getTime())) {
+                    hour = d.getUTCHours();
+                    minute = d.getUTCMinutes();
+                } else {
+                        console.warn('Invalid time parts:', timeStr);
+                        return null;
+                }
+            } else {
+                console.warn('Invalid time parts:', timeStr);
+                return null;
+            }
+        } else {
+            hour = parseInt(timeMatch[1], 10);
+            minute = parseInt(timeMatch[2], 10);
+            const ampm = timeMatch[3];
+
+            if (ampm) {
+                if ((/PM|م/i.test(ampm)) && hour < 12) {
+                    hour += 12;
+                }
+                if ((/AM|ص/i.test(ampm)) && hour === 12) { // Handle 12 AM (midnight)
+                    hour = 0;
+                }
+            }
+        }
+        
+        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
+            console.warn('Could not parse numbers from date/time:', { dateStr, timeStr });
+            return null;
+        }
+        
+        const resultDate = new Date(year, month, day, hour, minute);
+
+        if (isNaN(resultDate.getTime())) {
+            console.warn('Constructed date is invalid:', { year, month, day, hour, minute });
+            return null;
+        }
+        
+        return resultDate;
+    } catch (e) {
+        console.error("Error during date/time parsing:", { dateStr, timeStr }, e);
+        return null;
+    }
+};
+
+
 const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality, onAddBooking, onUpdateBooking, isSubmitting }) => {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [filterDate, setFilterDate] = useState<string>('');
   
   useEffect(() => {
     setBookings(initialBookings);
@@ -87,85 +167,28 @@ const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality
     const upcoming: Booking[] = [];
     const past: Booking[] = [];
 
-    // A highly robust date/time parser to handle various formats from the database.
-    const parseDateTime = (dateStr?: string, timeStr?: string): Date | null => {
-        if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') {
-            return null;
-        }
-
+    // Helper to get a comparable date string (YYYY-MM-DD) from a booking's date string
+    const getComparableDate = (dateStr: string | undefined): string | null => {
+        if (!dateStr) return null;
         try {
-            let year, month, day;
-
             const dateParts = dateStr.split(/[-/]/);
-            if (dateParts.length !== 3) {
-                console.warn('Invalid date parts:', dateStr);
-                return null;
-            }
+            if (dateParts.length !== 3) return null;
 
             if (dateParts[0].length === 4) { // YYYY-MM-DD
-                year = parseInt(dateParts[0], 10);
-                month = parseInt(dateParts[1], 10) - 1;
-                day = parseInt(dateParts[2], 10);
+                return `${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`;
             } else { // DD/MM/YYYY
-                day = parseInt(dateParts[0], 10);
-                month = parseInt(dateParts[1], 10) - 1;
-                year = parseInt(dateParts[2], 10);
+                return `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
             }
-
-            let hour, minute;
-            const cleanedTimeStr = timeStr.replace(/[\u200F\u202B]/g, '').trim();
-            const timeMatch = cleanedTimeStr.match(/(\d+):(\d+)\s*(AM|PM|م|ص)?/i);
-
-            if (!timeMatch) {
-                // Handle full ISO date string from Sheets time
-                if (cleanedTimeStr.includes('T') && cleanedTimeStr.includes('Z')) {
-                    const d = new Date(cleanedTimeStr);
-                    if (!isNaN(d.getTime())) {
-                        hour = d.getUTCHours();
-                        minute = d.getUTCMinutes();
-                    } else {
-                         console.warn('Invalid time parts:', timeStr);
-                         return null;
-                    }
-                } else {
-                    console.warn('Invalid time parts:', timeStr);
-                    return null;
-                }
-            } else {
-                hour = parseInt(timeMatch[1], 10);
-                minute = parseInt(timeMatch[2], 10);
-                const ampm = timeMatch[3];
-
-                if (ampm) {
-                    if ((/PM|م/i.test(ampm)) && hour < 12) {
-                        hour += 12;
-                    }
-                    if ((/AM|ص/i.test(ampm)) && hour === 12) { // Handle 12 AM (midnight)
-                        hour = 0;
-                    }
-                }
-            }
-            
-            if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
-                console.warn('Could not parse numbers from date/time:', { dateStr, timeStr });
-                return null;
-            }
-            
-            const resultDate = new Date(year, month, day, hour, minute);
-
-            if (isNaN(resultDate.getTime())) {
-                console.warn('Constructed date is invalid:', { year, month, day, hour, minute });
-                return null;
-            }
-            
-            return resultDate;
-        } catch (e) {
-            console.error("Error during date/time parsing:", { dateStr, timeStr }, e);
+        } catch {
             return null;
         }
     };
 
-    bookings.forEach(booking => {
+    const dateFilteredBookings = filterDate
+      ? bookings.filter(booking => getComparableDate(booking['التاريخ']) === filterDate)
+      : bookings;
+
+    dateFilteredBookings.forEach(booking => {
       const meetingEndDate = parseDateTime(booking['التاريخ'], booking['إلى الساعة']);
       if (!meetingEndDate) {
           return;
@@ -195,7 +218,7 @@ const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality
     });
 
     return { upcomingBookings: upcoming, pastBookings: past };
-  }, [bookings]);
+  }, [bookings, filterDate]);
 
   const handleAddBooking = () => {
     setEditingBooking(null);
@@ -267,12 +290,34 @@ const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold text-primary">إدارة الحجوزات</h1>
-        <button onClick={handleAddBooking} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-900 transition">
-          <PlusIcon />
-          <span>إضافة حجز جديد</span>
-        </button>
+        <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+                <label htmlFor="date-filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">فلترة حسب التاريخ:</label>
+                <input 
+                    type="date"
+                    id="date-filter"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="p-2 border border-gray-300 rounded-md shadow-sm"
+                    aria-label="فلترة حسب التاريخ"
+                />
+                {filterDate && (
+                    <button 
+                        onClick={() => setFilterDate('')} 
+                        className="text-sm text-red-600 hover:text-red-800 p-2 rounded-md bg-red-100 hover:bg-red-200 transition"
+                        aria-label="مسح فلتر التاريخ"
+                    >
+                        مسح
+                    </button>
+                )}
+            </div>
+            <button onClick={handleAddBooking} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-900 transition">
+                <PlusIcon />
+                <span>إضافة حجز جديد</span>
+            </button>
+        </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">

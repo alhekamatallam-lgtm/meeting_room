@@ -40,4 +40,4 @@ export interface ApiData {
   Dashboard: DashboardEntry[];
 }
 
-export type ViewType = 'dashboard' | 'bookings' | 'hospitality' | 'rooms' | 'admin';
+export type ViewType = 'dashboard' | 'bookings' | 'hospitality' | 'rooms' | 'admin' | 'today';
