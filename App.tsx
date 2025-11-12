@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ApiData, ViewType, Booking } from './types';
 import { fetchData, addBooking, updateBooking } from './services/apiService';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Bookings from './components/Bookings';
 import Hospitality from './components/Hospitality';
@@ -11,13 +12,26 @@ import Modal from './components/Modal';
 import Toast from './components/Toast';
 import TodayBookings from './components/TodayBookings';
 
+const navItems = [
+    { id: 'dashboard', label: 'لوحة المؤشرات' },
+    { id: 'bookings', label: 'الحجوزات' },
+    { id: 'today', label: 'حجوزات اليوم' },
+    { id: 'hospitality', label: 'الضيافة' },
+    { id: 'rooms', label: 'القاعات' },
+    { id: 'admin', label: 'إدارة الحجوزات' },
+];
+
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('dashboard');
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Used for both mobile menu and desktop collapse
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -25,6 +39,19 @@ const App: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const isInitialLoad = useRef(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Close sidebar if transitioning from mobile to desktop while it's open
+      if (!mobile) {
+        setIsSidebarOpen(false); // Resets to expanded on desktop
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (toast) {
@@ -56,12 +83,10 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Initial data load
   useEffect(() => {
     loadData(false);
   }, [loadData]);
 
-  // Refresh data on view change (soft refresh)
   useEffect(() => {
     if (isInitialLoad.current) {
         isInitialLoad.current = false;
@@ -70,7 +95,6 @@ const App: React.FC = () => {
     loadData(true);
   }, [view, loadData]);
 
-  // Refresh data on window focus (soft refresh)
   useEffect(() => {
     const handleFocus = () => loadData(true);
     window.addEventListener('focus', handleFocus);
@@ -79,12 +103,14 @@ const App: React.FC = () => {
     };
   }, [loadData]);
 
-
   const handleSetView = (newView: ViewType) => {
     if (newView === 'admin' && !isAdminAuthenticated) {
       setShowPasswordPrompt(true);
     } else {
       setView(newView);
+    }
+    if (isMobile) {
+      setIsSidebarOpen(false); // Close mobile menu on navigation
     }
   };
 
@@ -104,12 +130,12 @@ const App: React.FC = () => {
     if (!data) return;
     setIsSubmitting(true);
     try {
-      await updateBooking(updatedBooking);
-      await loadData(true); // Soft refresh
-      setToast({ message: 'تم تحديث الحجز بنجاح!', type: 'success' });
-    } catch (error) {
+      const response = await updateBooking(updatedBooking);
+      await loadData(true);
+      setToast({ message: response.message || 'تم تحديث الحجز بنجاح!', type: 'success' });
+    } catch (error: any) {
       console.error("Failed to update booking via API:", error);
-      setToast({ message: 'حدث خطأ أثناء تحديث الحجز.', type: 'error' });
+      setToast({ message: error.message || 'حدث خطأ أثناء تحديث الحجز.', type: 'error' });
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -120,12 +146,12 @@ const App: React.FC = () => {
     if (!data) return;
     setIsSubmitting(true);
     try {
-      await addBooking(newBookingData);
-      await loadData(true); // Soft refresh
-      setToast({ message: 'تم طلب حجز القاعة بنجاح!', type: 'success' });
-    } catch (error) {
+      const response = await addBooking(newBookingData);
+      await loadData(true);
+      setToast({ message: response.message || 'تم طلب حجز القاعة بنجاح!', type: 'success' });
+    } catch (error: any) {
       console.error("Failed to add booking via API:", error);
-      setToast({ message: 'حدث خطأ أثناء إضافة الحجز.', type: 'error' });
+      setToast({ message: error.message || 'حدث خطأ أثناء إضافة الحجز.', type: 'error' });
       throw error;
     } finally {
       setIsSubmitting(false);
@@ -145,45 +171,40 @@ const App: React.FC = () => {
         </div>
       );
     }
-
-    if (error) {
-      return <div className="flex items-center justify-center h-full text-red-600 text-xl">{error}</div>;
-    }
-
-    if (!data) {
-      return <div className="flex items-center justify-center h-full text-gray-500">لا توجد بيانات لعرضها.</div>;
-    }
+    if (error) return <div className="flex items-center justify-center h-full text-red-600 text-xl">{error}</div>;
+    if (!data) return <div className="flex items-center justify-center h-full text-gray-500">لا توجد بيانات لعرضها.</div>;
 
     switch (view) {
-      case 'dashboard':
-        return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
-      case 'bookings':
-        return <Bookings initialBookings={data.Bookings} rooms={data.Rooms} hospitality={data.Hospitality} onAddBooking={handleAddBooking} onUpdateBooking={handleUpdateBooking} isSubmitting={isSubmitting} />;
-      case 'today':
-        return <TodayBookings bookings={data.Bookings} />;
-      case 'hospitality':
-        return <Hospitality hospitalityData={data.Hospitality} />;
-      case 'rooms':
-        return <Rooms roomsData={data.Rooms} />;
-      case 'admin':
-         return <Admin allBookings={data.Bookings} rooms={data.Rooms} hospitality={data.Hospitality} onUpdateBooking={handleUpdateBooking} isSubmitting={isSubmitting} />;
-      default:
-        return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
+      case 'dashboard': return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
+      case 'bookings': return <Bookings initialBookings={data.Bookings} rooms={data.Rooms} hospitality={data.Hospitality} onAddBooking={handleAddBooking} onUpdateBooking={handleUpdateBooking} isSubmitting={isSubmitting} />;
+      case 'today': return <TodayBookings bookings={data.Bookings} onRefresh={() => loadData(true)} isRefreshing={isRefreshing} />;
+      case 'hospitality': return <Hospitality hospitalityData={data.Hospitality} />;
+      case 'rooms': return <Rooms roomsData={data.Rooms} />;
+      case 'admin': return <Admin allBookings={data.Bookings} rooms={data.Rooms} hospitality={data.Hospitality} onUpdateBooking={handleUpdateBooking} isSubmitting={isSubmitting} />;
+      default: return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
     }
   };
+  
+  const activeViewLabel = navItems.find(item => item.id === view)?.label || '';
 
   return (
-    <div className="flex h-screen bg-light-gray text-text-dark">
+    <div className="flex h-screen bg-light-gray text-text-dark overflow-hidden">
       <Sidebar 
+        navItems={navItems}
         activeView={view} 
         setView={handleSetView} 
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        isCollapsed={isMobile ? false : isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
         isRefreshing={isRefreshing}
+        isMobile={isMobile}
+        isMobileMenuOpen={isMobile ? isSidebarOpen : false}
       />
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-        {renderView()}
-      </main>
+      <div className="flex-1 flex flex-col">
+        {isMobile && <Header pageTitle={activeViewLabel} onMenuClick={() => setIsSidebarOpen(true)} />}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+          {renderView()}
+        </main>
+      </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
@@ -192,20 +213,11 @@ const App: React.FC = () => {
           <div className="space-y-4">
             <p>الرجاء إدخال كلمة المرور للوصول إلى صفحة الإدارة.</p>
             <div>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                autoFocus
-              />
+              <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" autoFocus />
               {passwordError && <p className="text-red-500 text-sm mt-1">{passwordError}</p>}
             </div>
             <div className="pt-2 flex justify-end">
-              <button onClick={handleAdminLogin} className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-900">
-                دخول
-              </button>
+              <button onClick={handleAdminLogin} className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-900">دخول</button>
             </div>
           </div>
         </Modal>

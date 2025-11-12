@@ -7,9 +7,42 @@ interface BookingFormProps {
   hospitality: Hospitality[];
   allBookings: Booking[];
   isSubmitting?: boolean;
-  onSave: (booking: Booking) => void;
+  onSave: (booking: Booking | Omit<Booking, 'رقم الحجز'>) => void;
   onCancel: () => void;
 }
+
+/**
+ * Parses a variety of custom datetime strings into a Date object.
+ * Returns null if the string is invalid.
+ */
+const parseCustomDateTime = (dateString?: string): Date | null => {
+  if (!dateString || typeof dateString !== 'string') return null;
+  const normalizedString = dateString.replace(/م/g, 'PM').replace(/ص/g, 'AM').replace(/\//g, '-');
+  
+  let date = new Date(normalizedString);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  
+  const arabicFormatRegex = /(\d{1,2}:\d{2}:\d{2})\s*(AM|PM)\s*(\d{4}-\d{2}-\d{2})/;
+  const match = normalizedString.match(arabicFormatRegex);
+  if (match) {
+    const time = match[1];
+    const ampm = match[2];
+    const datePart = match[3];
+    date = new Date(`${datePart} ${time} ${ampm}`);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  date = new Date(dateString);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+
+  return null;
+};
 
 const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, allBookings, isSubmitting, onSave, onCancel }) => {
   const getInitialData = () => ({
@@ -18,9 +51,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
     'الإدارة': '',
     'عنوان الاجتماع': '',
     'نوع الاجتماع': 'داخلي' as 'داخلي' | 'خارجي',
-    'التاريخ': new Date().toISOString().split('T')[0],
-    'من الساعة': '',
-    'إلى الساعة': '',
+    'من': '',
+    'إلى': '',
     'عدد الحضور': 1,
     'القاعة': rooms[0]?.['اسم القاعة'] || '',
     'الحالة': 'قيد الانتظار' as 'قيد الانتظار' | 'معتمد',
@@ -29,18 +61,42 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
   });
 
   const [formData, setFormData] = useState(getInitialData());
+  const [bookingDate, setBookingDate] = useState(''); // YYYY-MM-DD
+  const [startTime, setStartTime] = useState('');     // HH:mm
+  const [endTime, setEndTime] = useState('');       // HH:mm
 
-  const employeeNames = useMemo(() => [...new Set(allBookings.map(b => b['اسم الموظف']))], [allBookings]);
-  const departments = useMemo(() => [...new Set(allBookings.map(b => b['الإدارة']))], [allBookings]);
+  const employeeNames = useMemo(() => [...new Set(allBookings.map(b => b['اسم الموظف']))].sort(), [allBookings]);
+  const departments = useMemo(() => [...new Set(allBookings.map(b => b['الإدارة']))].sort(), [allBookings]);
 
   useEffect(() => {
     if (booking) {
-      setFormData({
-        ...getInitialData(),
-        ...booking
-      });
+      const fromDate = parseCustomDateTime(booking['من']);
+      const toDate = parseCustomDateTime(booking['إلى']);
+      
+      if (fromDate) {
+          // Adjust for timezone offset to display local time in inputs
+          fromDate.setMinutes(fromDate.getMinutes() - fromDate.getTimezoneOffset());
+          const fromISO = fromDate.toISOString();
+          setBookingDate(fromISO.split('T')[0]);
+          setStartTime(fromISO.split('T')[1].slice(0, 5));
+      } else {
+           setBookingDate('');
+           setStartTime('');
+      }
+
+      if (toDate) {
+          toDate.setMinutes(toDate.getMinutes() - toDate.getTimezoneOffset());
+          const toISO = toDate.toISOString();
+          setEndTime(toISO.split('T')[1].slice(0, 5));
+      } else {
+          setEndTime('');
+      }
+      setFormData({ ...getInitialData(), ...booking });
     } else {
         setFormData(getInitialData());
+        setBookingDate('');
+        setStartTime('');
+        setEndTime('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking, rooms]);
@@ -56,6 +112,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
     setFormData(prev => ({
       ...prev,
       [name]: name === 'عدد الحضور' ? parseInt(value, 10) || 1 : value,
@@ -64,10 +121,23 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({ ...formData, 'رقم الحجز': booking?.['رقم الحجز'] || '' });
+
+    // Combine date and time back into ISO strings
+    const fromISO = new Date(`${bookingDate}T${startTime}`).toISOString();
+    const toISO = new Date(`${bookingDate}T${endTime}`).toISOString();
+
+    const dataToSend = {
+      ...formData,
+      'من': fromISO,
+      'إلى': toISO,
+      'رقم الحجز': booking?.['رقم الحجز'] || '',
+    };
+    onSave(dataToSend as Booking);
   };
   
-  const today = new Date().toISOString().split('T')[0];
+  const todayForInput = new Date();
+  todayForInput.setMinutes(todayForInput.getMinutes() - todayForInput.getTimezoneOffset());
+  const minDate = booking ? undefined : todayForInput.toISOString().split('T')[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -90,23 +160,60 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
             {departments.map(dept => <option key={dept} value={dept} />)}
           </datalist>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">التاريخ</label>
-          <input type="date" name="التاريخ" value={formData['التاريخ']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" min={today} />
+
+        <div className="md:col-span-2 bg-light-gray p-4 rounded-lg border border-gray-200 space-y-4">
+            <div>
+                <label htmlFor="booking-date" className="block text-sm font-bold text-primary mb-1">تحديد اليوم</label>
+                <input 
+                    id="booking-date"
+                    type="date" 
+                    value={bookingDate} 
+                    onChange={(e) => setBookingDate(e.target.value)} 
+                    required 
+                    className="appearance-none mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-secondary focus:border-secondary" 
+                    min={minDate}
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="start-time" className="block text-sm font-bold text-primary mb-1">من</label>
+                    <input 
+                        id="start-time"
+                        type="time" 
+                        value={startTime} 
+                        onChange={(e) => {
+                            setStartTime(e.target.value);
+                            // Reset end time if it's before the new start time
+                            if (endTime && e.target.value > endTime) {
+                                setEndTime('');
+                            }
+                        }}
+                        disabled={!bookingDate}
+                        required 
+                        className="appearance-none mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100 focus:ring-secondary focus:border-secondary"
+                    />
+                </div>
+                <div>
+                    <label htmlFor="end-time" className="block text-sm font-bold text-primary mb-1">إلى</label>
+                    <input 
+                        id="end-time"
+                        type="time" 
+                        value={endTime} 
+                        onChange={(e) => setEndTime(e.target.value)} 
+                        disabled={!startTime}
+                        min={startTime}
+                        required 
+                        className="appearance-none mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 disabled:bg-gray-100 focus:ring-secondary focus:border-secondary" 
+                    />
+                </div>
+            </div>
         </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">القاعة</label>
           <select name="القاعة" value={formData['القاعة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white">
             {rooms.map(r => <option key={r['اسم القاعة']} value={r['اسم القاعة']}>{r['اسم القاعة']}</option>)}
           </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">من الساعة</label>
-          <input type="time" name="من الساعة" value={formData['من الساعة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">إلى الساعة</label>
-          <input type="time" name="إلى الساعة" value={formData['إلى الساعة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">نوع الاجتماع</label>
@@ -115,7 +222,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
             <option value="خارجي">خارجي</option>
           </select>
         </div>
-        <div>
+         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700">عدد الحضور</label>
           <input type="number" name="عدد الحضور" value={formData['عدد الحضور']} onChange={handleChange} required min="1" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
         </div>

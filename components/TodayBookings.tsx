@@ -1,206 +1,240 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../types';
-import { ClockIcon, UsersIcon, ZoomInIcon, ZoomOutIcon, ZoomResetIcon } from './icons/Icons';
+import { ClockIcon, UsersIcon, ArrowPathIcon, UserCircleIcon, LocationMarkerIcon, CheckCircleIcon } from './icons/Icons';
+import BookingDetailsModal from './BookingDetailsModal';
 
-interface TodayBookingsProps {
-  bookings: Booking[];
-}
+const parseCustomDateTime = (dateString?: string): Date | null => {
+  if (!dateString || typeof dateString !== 'string') return null;
 
-// Helper functions for consistency
-const formatTime = (timeString: string): string => {
-    if (!timeString || typeof timeString !== 'string') {
-      return '';
+  // Normalize Arabic PM/AM indicators and slashes
+  const normalizedString = dateString.replace(/م/g, 'PM').replace(/ص/g, 'AM').replace(/\//g, '-');
+  
+  // Attempt to parse common formats directly
+  // Handles "YYYY-MM-DD hh:mm AM/PM"
+  let date = new Date(normalizedString);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+  
+  // Handle "h:mm:ss PM YYYY-MM-DD"
+  const arabicFormatRegex = /(\d{1,2}:\d{2}:\d{2})\s*(AM|PM)\s*(\d{4}-\d{2}-\d{2})/;
+  const match = normalizedString.match(arabicFormatRegex);
+  if (match) {
+    const time = match[1];
+    const ampm = match[2];
+    const datePart = match[3];
+    
+    date = new Date(`${datePart} ${time} ${ampm}`);
+    if (!isNaN(date.getTime())) {
+      return date;
     }
-    if (timeString.startsWith('1899-12-30T')) {
-      try {
-        const date = new Date(timeString);
-        if (isNaN(date.getTime())) {
-          return timeString;
-        }
-        return date.toLocaleTimeString('ar-SA-u-nu-arab', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-      } catch (error) {
-        console.error("Could not format time:", timeString, error);
-        return timeString;
-      }
-    }
-    return timeString;
+  }
+
+  // Fallback for any other valid date string JS can parse
+  date = new Date(dateString);
+  if (!isNaN(date.getTime())) {
+    return date;
+  }
+
+  return null;
 };
 
-const parseDateTime = (dateStr?: string, timeStr?: string): Date | null => {
-    if (!dateStr || !timeStr || typeof dateStr !== 'string' || typeof timeStr !== 'string') {
-        return null;
+// New timezone-aware function to get current date in Riyadh
+const getRiyadhTodayString = () => {
+    // 'en-CA' gives YYYY-MM-DD format
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
+};
+
+// A helper to extract date part from API's custom string format
+const extractDateString = (apiDateString: string): string | null => {
+    const match = apiDateString.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+    if (match) {
+        // Returns YYYY-MM-DD
+        return `${match[1]}-${match[2]}-${match[3]}`;
     }
-    try {
-        let year, month, day;
-        const dateParts = dateStr.split(/[-/]/);
-        if (dateParts.length !== 3) { return null; }
+    return null;
+};
 
-        if (dateParts[0].length === 4) { // YYYY-MM-DD
-            year = parseInt(dateParts[0], 10);
-            month = parseInt(dateParts[1], 10) - 1;
-            day = parseInt(dateParts[2], 10);
-        } else { // DD/MM/YYYY
-            day = parseInt(dateParts[0], 10);
-            month = parseInt(dateParts[1], 10) - 1;
-            year = parseInt(dateParts[2], 10);
+// Component to render individual card
+const BookingCard: React.FC<{ booking: Booking, onClick: () => void }> = ({ booking, onClick }) => {
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000); // Update every minute
+        return () => clearInterval(timer);
+    }, []);
+
+    const { status, progress, timeStatus } = useMemo(() => {
+        const startTime = parseCustomDateTime(booking['من']);
+        const endTime = parseCustomDateTime(booking['إلى']);
+
+        if (!startTime || !endTime) {
+            return { status: 'وقت غير صالح', progress: 0, timeStatus: '' };
         }
+        
+        let statusText: string;
+        let progressPercent = 0;
+        let timeStatusText: string = '';
 
-        let hour, minute;
-        const cleanedTimeStr = timeStr.replace(/[\u200F\u202B]/g, '').trim();
-        const timeMatch = cleanedTimeStr.match(/(\d+):(\d+)\s*(AM|PM|م|ص)?/i);
-
-        if (!timeMatch) {
-            if (cleanedTimeStr.includes('T') && cleanedTimeStr.includes('Z')) {
-                const d = new Date(cleanedTimeStr);
-                if (!isNaN(d.getTime())) {
-                    hour = d.getUTCHours();
-                    minute = d.getUTCMinutes();
-                } else { return null; }
-            } else { return null; }
+        if (now < startTime) {
+            statusText = 'قادم';
+            const diffMinutes = Math.round((startTime.getTime() - now.getTime()) / 60000);
+            if (diffMinutes < 60) {
+              timeStatusText = `يبدأ خلال ${diffMinutes} دقيقة`;
+            } else {
+              timeStatusText = `يبدأ الساعة ${startTime.toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' })}`;
+            }
+        } else if (now > endTime) {
+            statusText = 'منتهي';
+            progressPercent = 100;
+            timeStatusText = `انتهى الساعة ${endTime.toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' })}`;
         } else {
-            hour = parseInt(timeMatch[1], 10);
-            minute = parseInt(timeMatch[2], 10);
-            const ampm = timeMatch[3];
-
-            if (ampm) {
-                if ((/PM|م/i.test(ampm)) && hour < 12) { hour += 12; }
-                if ((/AM|ص/i.test(ampm)) && hour === 12) { hour = 0; }
-            }
+            statusText = 'جارٍ الآن';
+            const totalDuration = endTime.getTime() - startTime.getTime();
+            const elapsed = now.getTime() - startTime.getTime();
+            progressPercent = Math.min(100, (elapsed / totalDuration) * 100);
+            const remainingMinutes = Math.round((endTime.getTime() - now.getTime()) / 60000);
+            timeStatusText = `ينتهي خلال ${remainingMinutes} دقيقة`;
         }
-        if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) { return null; }
-        const resultDate = new Date(year, month, day, hour, minute);
-        return isNaN(resultDate.getTime()) ? null : resultDate;
-    } catch (e) {
-        return null;
-    }
-};
 
-const getStatusChip = (status: string) => {
-    switch (status) {
-        case 'معتمد':
-            return 'bg-green-100 text-green-800';
-        case 'قيد الانتظار':
-            return 'bg-yellow-100 text-yellow-800';
-        case 'مرفوض':
-            return 'bg-red-100 text-red-800';
-        default:
-            return 'bg-gray-100 text-gray-800';
-    }
-};
+        return { status: statusText, progress: progressPercent, timeStatus: timeStatusText };
+    }, [booking, now]);
 
-const normalizeDate = (dateStr: string): string => {
-    if (!dateStr || typeof dateStr !== 'string') return '';
-    try {
-        // Handle potential ISO strings with time component like 2024-05-22T00:00:00.000Z
-        const datePart = dateStr.split('T')[0];
-
-        const dateParts = datePart.split(/[-/]/);
-        if (dateParts.length !== 3) return dateStr;
-
-        if (dateParts[0].length === 4) { // YYYY-MM-DD
-            return `${dateParts[0]}-${dateParts[1].padStart(2, '0')}-${dateParts[2].padStart(2, '0')}`;
-        } else { // DD/MM/YYYY or D/M/YYYY
-            return `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+    const isFinished = status === 'منتهي';
+    
+    const getStatusColors = () => {
+        switch (status) {
+            case 'جارٍ الآن': return 'border-green-500 bg-green-50';
+            case 'قادم': return 'border-blue-500 bg-blue-50';
+            case 'منتهي': return 'border-gray-400 bg-gray-50';
+            default: return 'border-gray-300 bg-gray-100';
         }
-    } catch {
-        return dateStr;
+    };
+
+    const getProgressBarColor = () => {
+        switch (status) {
+            case 'جارٍ الآن': return 'bg-green-500';
+            case 'قادم': return 'bg-blue-500';
+            case 'منتهي': return 'bg-gray-400';
+            default: return 'bg-gray-300';
+        }
     }
-};
-
-const TodayBookings: React.FC<TodayBookingsProps> = ({ bookings }) => {
-    const [zoomLevel, setZoomLevel] = useState(1);
-
-    const handleZoomIn = () => setZoomLevel(prev => prev + 0.1);
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.1));
-    const handleZoomReset = () => setZoomLevel(1);
-
-    const groupedBookings = useMemo(() => {
-        const today = new Date();
-        const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-        const todaysBookings = bookings
-            .filter(b => normalizeDate(b['التاريخ']) === todayString)
-            .sort((a, b) => {
-                const dateA = parseDateTime(a['التاريخ'], a['من الساعة']);
-                const dateB = parseDateTime(b['التاريخ'], b['من الساعة']);
-                if (!dateA) return 1;
-                if (!dateB) return -1;
-                return dateA.getTime() - dateB.getTime();
-            });
-
-        const groups: { [key: string]: Booking[] } = {};
-        todaysBookings.forEach(booking => {
-            const room = booking['القاعة'];
-            if (!groups[room]) {
-                groups[room] = [];
-            }
-            groups[room].push(booking);
-        });
-
-        return groups;
-
-    }, [bookings]);
-
-    const rooms = Object.keys(groupedBookings).sort();
 
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center flex-wrap gap-4">
-                <h1 className="text-3xl font-bold text-primary">حجوزات اليوم</h1>
-                <div className="flex items-center gap-4 flex-wrap">
-                    <p className="text-lg font-semibold text-gray-500">{new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    <div className="flex items-center gap-2 bg-white p-1 rounded-lg shadow-sm border">
-                        <button onClick={handleZoomIn} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="تكبير"><ZoomInIcon/></button>
-                        <button onClick={handleZoomOut} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="تصغير"><ZoomOutIcon/></button>
-                        <button onClick={handleZoomReset} className="p-2 rounded-md hover:bg-gray-100 text-gray-600" aria-label="إعادة تعيين"><ZoomResetIcon/></button>
+        <div 
+            onClick={onClick}
+            className={`bg-white rounded-lg shadow-md transition-all hover:shadow-xl hover:-translate-y-1 border-r-4 cursor-pointer flex flex-col ${getStatusColors()} ${isFinished ? 'opacity-70' : ''}`}
+        >
+            <div className="p-4 border-b flex justify-between items-start gap-2">
+                <div>
+                    <h3 className="text-lg font-bold text-primary">{booking['عنوان الاجتماع']}</h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                        <UserCircleIcon />
+                        <span>{booking['اسم الموظف']} / {booking['الإدارة']}</span>
                     </div>
+                </div>
+                <span className={`px-3 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${status === 'جارٍ الآن' ? 'bg-green-100 text-green-800 animate-pulse' : status === 'قادم' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                    {status}
+                </span>
+            </div>
+
+            <div className="p-4 space-y-3 flex-grow">
+                <div className="flex items-center gap-3 text-sm">
+                    <ClockIcon />
+                    <p className="font-semibold text-text-dark font-mono tracking-wider">
+                        {parseCustomDateTime(booking['من'])?.toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' })} - {parseCustomDateTime(booking['إلى'])?.toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                    <LocationMarkerIcon />
+                    <p className="font-semibold text-text-dark">{booking['القاعة']}</p>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                    <UsersIcon />
+                    <p className="font-semibold text-text-dark">{booking['عدد الحضور']} حضور</p>
                 </div>
             </div>
 
-            {rooms.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow-md">
-                    <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    <p className="mt-4 text-xl text-gray-500">لا توجد حجوزات لهذا اليوم.</p>
+            <div className="p-3 bg-light-gray rounded-b-lg space-y-2">
+                <div className="flex justify-between items-center text-xs text-gray-600">
+                    <span>{timeStatus}</span>
+                    {isFinished && <CheckCircleIcon />}
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className={`h-2.5 rounded-full transition-all duration-500 ${getProgressBarColor()}`} style={{ width: `${progress}%` }}></div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const TodayBookings: React.FC<{ bookings: Booking[], onRefresh: () => void, isRefreshing: boolean }> = ({ bookings, onRefresh, isRefreshing }) => {
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
+    const todaysBookings = useMemo(() => {
+        const riyadhToday = getRiyadhTodayString();
+        
+        return bookings
+            .filter(b => {
+                const bookingDatePart = extractDateString(b['من']) || extractDateString(b['إلى']);
+                return bookingDatePart === riyadhToday && b['الحالة'] === 'معتمد';
+            })
+            .sort((a, b) => {
+                const timeA = parseCustomDateTime(a['من'])?.getTime() || 0;
+                const timeB = parseCustomDateTime(b['من'])?.getTime() || 0;
+                return timeA - timeB;
+            });
+    }, [bookings]);
+
+    const handleBookingClick = (booking: Booking) => {
+      setSelectedBooking(booking);
+      setIsDetailsModalOpen(true);
+    };
+    
+    const riyadhDateDisplay = new Date().toLocaleDateString('ar-SA', {
+        timeZone: 'Asia/Riyadh',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-primary">حجوزات اليوم</h1>
+                    <p className="text-lg text-gray-500">{riyadhDateDisplay} (توقيت الرياض)</p>
+                </div>
+                <button onClick={onRefresh} disabled={isRefreshing} className="flex items-center gap-2 bg-white text-primary px-4 py-2 rounded-lg shadow-sm border hover:bg-gray-50 disabled:opacity-50">
+                    {isRefreshing ? <div className="animate-spin"><ArrowPathIcon /></div> : <ArrowPathIcon />}
+                    <span>{isRefreshing ? 'جاري التحديث...' : 'تحديث'}</span>
+                </button>
+            </div>
+
+            {todaysBookings.length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {todaysBookings.map(booking => (
+                        <BookingCard key={booking['رقم الحجز']} booking={booking} onClick={() => handleBookingClick(booking)} />
+                    ))}
                 </div>
             ) : (
-                <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top right', transition: 'transform 0.2s ease-out' }}>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 items-start">
-                        {rooms.map((room) => (
-                            <div key={room} className="bg-white rounded-lg shadow-md flex flex-col h-full">
-                                <h2 className="text-xl font-bold text-white bg-primary p-4 rounded-t-lg">{room}</h2>
-                                <div className="p-4 space-y-4 flex-1">
-                                    {groupedBookings[room].map(booking => (
-                                        <div key={booking['رقم الحجز']} className="border rounded-lg p-4 transition-shadow hover:shadow-lg bg-light-gray">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="text-lg font-bold text-primary">{booking['عنوان الاجتماع']}</h3>
-                                                    <p className="text-sm text-gray-600">{booking['الإدارة']} / {booking['اسم الموظف']}</p>
-                                                </div>
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getStatusChip(booking['الحالة'])}`}>
-                                                    {booking['الحالة']}
-                                                </span>
-                                            </div>
-                                            <div className="mt-4 flex items-center justify-between text-sm text-text-dark">
-                                                <div className="flex items-center gap-2 font-semibold">
-                                                    <ClockIcon />
-                                                    <span className="font-mono tracking-wider">{`${formatTime(booking['من الساعة'])} - ${formatTime(booking['إلى الساعة'])}`}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <UsersIcon />
-                                                    <span>{booking['عدد الحضور']} حضور</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <div className="text-center py-20 bg-white rounded-lg shadow-md">
+                     <svg className="mx-auto h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />
+                    </svg>
+                    <h3 className="mt-4 text-xl font-medium text-gray-900">لا توجد حجوزات معتمدة لهذا اليوم</h3>
+                    <p className="mt-2 text-sm text-gray-500">يبدو أن اليوم هادئ! لا توجد اجتماعات مجدولة حالياً.</p>
                 </div>
+            )}
+
+            {isDetailsModalOpen && selectedBooking && (
+                <BookingDetailsModal
+                    booking={selectedBooking}
+                    onClose={() => setIsDetailsModalOpen(false)}
+                />
             )}
         </div>
     );

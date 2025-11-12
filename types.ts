@@ -4,14 +4,15 @@ export interface Booking {
   "الإدارة": string;
   "عنوان الاجتماع": string;
   "نوع الاجتماع": 'داخلي' | 'خارجي';
-  "التاريخ": string; // YYYY-MM-DD
-  "من الساعة": string; // HH:MM
-  "إلى الساعة": string; // HH:MM
+  "من": string; // Custom DateTime string e.g., "2025/11/12 02:00 PM"
+  "إلى": string; // Custom DateTime string e.g., "3:00:00 م 2025/11/12"
   "عدد الحضور": number;
   "القاعة": string;
   "الحالة": 'قيد الانتظار' | 'معتمد' | 'مرفوض' | string;
   "الضيافة": string;
   "الملاحظات": string;
+  "تاريخ العملية"?: string;
+  "وقت العملية"?: string;
 }
 
 export interface Hospitality {
