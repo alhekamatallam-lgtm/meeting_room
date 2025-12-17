@@ -1,3 +1,4 @@
+
 export interface Booking {
   "رقم الحجز": string;
   "اسم الموظف": string;
@@ -13,6 +14,7 @@ export interface Booking {
   "الملاحظات": string;
   "تاريخ العملية"?: string;
   "وقت العملية"?: string;
+  email?: string;
 }
 
 export interface Hospitality {

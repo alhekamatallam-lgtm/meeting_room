@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Booking } from '../types';
 import Modal from './Modal';
-import { UserCircleIcon, CalendarIcon, ClockIcon, LocationMarkerIcon, UsersIcon, InfoIcon, CoffeeIcon } from './icons/Icons';
+import { UserCircleIcon, CalendarIcon, ClockIcon, LocationMarkerIcon, UsersIcon, InfoIcon, CoffeeIcon, EmailIcon } from './icons/Icons';
 
 interface BookingDetailsModalProps {
   booking: Booking;
@@ -107,6 +108,13 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ booking, onCl
                     label="عدد الحضور"
                     value={`${booking['عدد الحضور']} شخص`}
                 />
+                {booking.email && (
+                     <DetailItem 
+                        icon={<EmailIcon />}
+                        label="البريد الإلكتروني"
+                        value={booking.email}
+                    />
+                )}
                 {booking['الضيافة'] && (
                      <DetailItem 
                         icon={<CoffeeIcon />}

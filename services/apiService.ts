@@ -1,7 +1,8 @@
+
 import { ApiData, Booking } from '../types';
 
 // Updated API endpoint as per user request
-const API_URL = 'https://script.google.com/macros/s/AKfycby1gC_7Gvvf9Y-bV_5egwarAWkUAwTstgMkQGe2YEvNryzYjqXod5yeIh6CGA8p22OGIQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzrf9Q516h7EUCAumlcjmlkjAga5eeDasZlByjGnj56iDaFJMKFaywZXLf_0fOzPuIROQ/exec';
 
 export const fetchData = async (): Promise<ApiData> => {
   try {

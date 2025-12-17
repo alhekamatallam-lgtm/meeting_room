@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Booking, Room, Hospitality } from '../types';
 
@@ -58,12 +59,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
     'الحالة': 'قيد الانتظار' as 'قيد الانتظار' | 'معتمد',
     'الضيافة': '',
     'الملاحظات': '',
+    email: '',
   });
 
   const [formData, setFormData] = useState(getInitialData());
   const [bookingDate, setBookingDate] = useState(''); // YYYY-MM-DD
   const [startTime, setStartTime] = useState('');     // HH:mm
   const [endTime, setEndTime] = useState('');       // HH:mm
+  const [emailPrefix, setEmailPrefix] = useState('');
 
   const employeeNames = useMemo(() => [...new Set(allBookings.map(b => b['اسم الموظف']))].sort(), [allBookings]);
   const departments = useMemo(() => [...new Set(allBookings.map(b => b['الإدارة']))].sort(), [allBookings]);
@@ -91,12 +94,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
       } else {
           setEndTime('');
       }
+
+      if (booking.email) {
+          setEmailPrefix(booking.email.split('@')[0]);
+      } else {
+          setEmailPrefix('');
+      }
+
       setFormData({ ...getInitialData(), ...booking });
     } else {
         setFormData(getInitialData());
         setBookingDate('');
         setStartTime('');
         setEndTime('');
+        setEmailPrefix('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking, rooms]);
@@ -126,11 +137,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
     const fromISO = new Date(`${bookingDate}T${startTime}`).toISOString();
     const toISO = new Date(`${bookingDate}T${endTime}`).toISOString();
 
+    const fullEmail = emailPrefix ? `${emailPrefix}@alrajhihum.org` : '';
+
     const dataToSend = {
       ...formData,
       'من': fromISO,
       'إلى': toISO,
       'رقم الحجز': booking?.['رقم الحجز'] || '',
+      email: fullEmail,
     };
     onSave(dataToSend as Booking);
   };
@@ -153,6 +167,23 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
             {employeeNames.map(name => <option key={name} value={name} />)}
           </datalist>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+          <div className="mt-1 flex rounded-md shadow-sm" dir="ltr">
+             <input 
+               type="text" 
+               value={emailPrefix} 
+               onChange={(e) => setEmailPrefix(e.target.value)}
+               className="flex-1 min-w-0 block w-full px-3 py-2 rounded-l-md border border-gray-300 focus:ring-secondary focus:border-secondary sm:text-sm"
+               placeholder="username"
+             />
+             <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                @alrajhihum.org
+             </span>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700">الإدارة</label>
           <input list="departments" type="text" name="الإدارة" value={formData['الإدارة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ViewType } from '../types';
 import { DashboardIcon, BookingsIcon, HospitalityIcon, RoomsIcon, AdminIcon, SidebarToggleIcon, RefreshIcon, TodayIcon } from './icons/Icons';
@@ -69,6 +70,12 @@ const Sidebar: React.FC<SidebarProps> = ({ navItems, activeView, setView, isColl
         >
           <SidebarToggleIcon isCollapsed={isCollapsed} />
         </button>
+        {!isCollapsed && (
+            <div className="text-center text-xs text-gray-500 pt-3">
+                <p>powerby : Abdelaziz Frhat</p>
+                <p>itsupport@alrajhihum.org</p>
+            </div>
+        )}
       </div>
     </div>
   );
