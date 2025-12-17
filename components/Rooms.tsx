@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Room } from '../types';
 
@@ -9,12 +8,12 @@ interface RoomsProps {
 const Rooms: React.FC<RoomsProps> = ({ roomsData }) => {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-primary">قاعات الاجتماعات</h1>
+      <h1 className="text-3xl font-bold text-white">قاعات الاجتماعات</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {roomsData.map((room) => {
           const isAvailable = room['متاحة'] === 'نعم';
           return (
-            <div key={room['اسم القاعة']} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between">
+            <div key={room['اسم القاعة']} className="bg-white p-6 rounded-lg shadow-md flex flex-col justify-between text-text-dark">
               <div>
                 <div className="flex justify-between items-start">
                   <h2 className="text-xl font-bold text-primary">{room['اسم القاعة']}</h2>

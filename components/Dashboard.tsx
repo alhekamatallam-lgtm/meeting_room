@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { DashboardEntry, Booking } from '../types';
@@ -36,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ dashboardData, bookings }) => {
   
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-primary">لوحة المؤشرات</h1>
+      <h1 className="text-3xl font-bold text-white">لوحة المؤشرات</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="إجمالي الاجتماعات" value={getIndicatorValue('عدد الاجتماعات الكلي')} />

@@ -161,7 +161,7 @@ const App: React.FC = () => {
   const renderView = () => {
     if (loading) {
       return (
-        <div className="flex flex-col items-center justify-center h-full text-primary text-xl">
+        <div className="flex flex-col items-center justify-center h-full text-white text-xl">
           <img 
             src="https://cdn.prod.website-files.com/5ee0d0c8efb107a26419bf01/5ee0d97bc8ef9ba80c03b6fb_Logo_02.png" 
             alt="شعار التحميل" 
@@ -171,8 +171,8 @@ const App: React.FC = () => {
         </div>
       );
     }
-    if (error) return <div className="flex items-center justify-center h-full text-red-600 text-xl">{error}</div>;
-    if (!data) return <div className="flex items-center justify-center h-full text-gray-500">لا توجد بيانات لعرضها.</div>;
+    if (error) return <div className="flex items-center justify-center h-full text-red-500 text-xl">{error}</div>;
+    if (!data) return <div className="flex items-center justify-center h-full text-gray-400">لا توجد بيانات لعرضها.</div>;
 
     switch (view) {
       case 'dashboard': return <Dashboard dashboardData={data.Dashboard} bookings={data.Bookings} />;
@@ -188,7 +188,7 @@ const App: React.FC = () => {
   const activeViewLabel = navItems.find(item => item.id === view)?.label || '';
 
   return (
-    <div className="flex h-screen bg-light-gray text-text-dark overflow-hidden">
+    <div className="flex h-screen bg-primary text-gray-200 overflow-hidden">
       <Sidebar 
         navItems={navItems}
         activeView={view} 

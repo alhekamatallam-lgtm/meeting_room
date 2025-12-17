@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Hospitality as HospitalityType } from '../types';
 
@@ -9,10 +8,10 @@ interface HospitalityProps {
 const Hospitality: React.FC<HospitalityProps> = ({ hospitalityData }) => {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-primary">إدارة الضيافة</h1>
+      <h1 className="text-3xl font-bold text-white">إدارة الضيافة</h1>
       <div className="bg-white p-6 rounded-lg shadow-md">
         <div className="overflow-x-auto">
-          <table className="w-full text-right">
+          <table className="w-full text-right text-text-dark">
             <thead className="bg-light-gray">
               <tr>
                 <th className="p-3 text-sm font-semibold tracking-wide">نوع الاجتماع</th>

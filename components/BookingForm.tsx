@@ -67,6 +67,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
   const [startTime, setStartTime] = useState('');     // HH:mm
   const [endTime, setEndTime] = useState('');       // HH:mm
   const [emailPrefix, setEmailPrefix] = useState('');
+  const [emailDomain, setEmailDomain] = useState('@alrajhihum.org');
 
   const employeeNames = useMemo(() => [...new Set(allBookings.map(b => b['اسم الموظف']))].sort(), [allBookings]);
   const departments = useMemo(() => [...new Set(allBookings.map(b => b['الإدارة']))].sort(), [allBookings]);
@@ -96,9 +97,16 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
       }
 
       if (booking.email) {
-          setEmailPrefix(booking.email.split('@')[0]);
+          const parts = booking.email.split('@');
+          setEmailPrefix(parts[0]);
+          if (parts.length > 1 && (parts[1] === 'alrajhihum.org' || parts[1] === 'innovationsana.org')) {
+            setEmailDomain(`@${parts[1]}`);
+          } else {
+            setEmailDomain('@alrajhihum.org');
+          }
       } else {
           setEmailPrefix('');
+          setEmailDomain('@alrajhihum.org');
       }
 
       setFormData({ ...getInitialData(), ...booking });
@@ -108,6 +116,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
         setStartTime('');
         setEndTime('');
         setEmailPrefix('');
+        setEmailDomain('@alrajhihum.org');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking, rooms]);
@@ -137,7 +146,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
     const fromISO = new Date(`${bookingDate}T${startTime}`).toISOString();
     const toISO = new Date(`${bookingDate}T${endTime}`).toISOString();
 
-    const fullEmail = emailPrefix ? `${emailPrefix}@alrajhihum.org` : '';
+    const fullEmail = emailPrefix ? `${emailPrefix}${emailDomain}` : '';
 
     const dataToSend = {
       ...formData,
@@ -157,11 +166,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700">عنوان الاجتماع</label>
+          <label className="block text-sm font-bold text-primary mb-1">عنوان الاجتماع</label>
           <input type="text" name="عنوان الاجتماع" value={formData['عنوان الاجتماع']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">اسم الموظف</label>
+          <label className="block text-sm font-bold text-primary mb-1">اسم الموظف</label>
           <input list="employee-names" type="text" name="اسم الموظف" value={formData['اسم الموظف']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
           <datalist id="employee-names">
             {employeeNames.map(name => <option key={name} value={name} />)}
@@ -169,23 +178,28 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">البريد الإلكتروني</label>
+          <label className="block text-sm font-bold text-primary mb-1">البريد الإلكتروني</label>
           <div className="mt-1 flex rounded-md shadow-sm" dir="ltr">
              <input 
                type="text" 
                value={emailPrefix} 
                onChange={(e) => setEmailPrefix(e.target.value)}
-               className="flex-1 min-w-0 block w-full px-3 py-2 rounded-l-md border border-gray-300 focus:ring-secondary focus:border-secondary sm:text-sm"
+               className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md border border-gray-300 focus:ring-secondary focus:border-secondary sm:text-sm"
                placeholder="username"
              />
-             <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
-                @alrajhihum.org
-             </span>
+             <select 
+                value={emailDomain} 
+                onChange={(e) => setEmailDomain(e.target.value)}
+                className="inline-flex items-center px-3 rounded-none rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm focus:ring-secondary focus:border-secondary"
+             >
+                <option value="@alrajhihum.org">@alrajhihum.org</option>
+                <option value="@innovationsana.org">@innovationsana.org</option>
+             </select>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">الإدارة</label>
+          <label className="block text-sm font-bold text-primary mb-1">الإدارة</label>
           <input list="departments" type="text" name="الإدارة" value={formData['الإدارة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
            <datalist id="departments">
             {departments.map(dept => <option key={dept} value={dept} />)}
@@ -241,28 +255,28 @@ const BookingForm: React.FC<BookingFormProps> = ({ booking, rooms, hospitality, 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">القاعة</label>
+          <label className="block text-sm font-bold text-primary mb-1">القاعة</label>
           <select name="القاعة" value={formData['القاعة']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white">
             {rooms.map(r => <option key={r['اسم القاعة']} value={r['اسم القاعة']}>{r['اسم القاعة']}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">نوع الاجتماع</label>
+          <label className="block text-sm font-bold text-primary mb-1">نوع الاجتماع</label>
           <select name="نوع الاجتماع" value={formData['نوع الاجتماع']} onChange={handleChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-white">
             <option value="داخلي">داخلي</option>
             <option value="خارجي">خارجي</option>
           </select>
         </div>
          <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700">عدد الحضور</label>
+          <label className="block text-sm font-bold text-primary mb-1">عدد الحضور</label>
           <input type="number" name="عدد الحضور" value={formData['عدد الحضور']} onChange={handleChange} required min="1" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
         </div>
         <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">الضيافة المقترحة</label>
+            <label className="block text-sm font-bold text-primary mb-1">الضيافة المقترحة</label>
             <input type="text" name="الضيافة" value={formData['الضيافة']} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100" />
         </div>
         <div className="md:col-span-2">
-          <label className="block text-sm font-medium text-gray-700">الملاحظات</label>
+          <label className="block text-sm font-bold text-primary mb-1">الملاحظات</label>
           <textarea name="الملاحظات" value={formData['الملاحظات']} onChange={handleChange} rows={3} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
         </div>
       </div>

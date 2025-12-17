@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ navItems, activeView, setView, isColl
           <SidebarToggleIcon isCollapsed={isCollapsed} />
         </button>
         {!isCollapsed && (
-            <div className="text-center text-xs text-gray-500 pt-3">
+            <div className="text-center text-xs text-primary pt-3">
                 <p>powerby : Abdelaziz Frhat</p>
                 <p>itsupport@alrajhihum.org</p>
             </div>

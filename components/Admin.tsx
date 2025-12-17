@@ -145,7 +145,7 @@ const Admin: React.FC<AdminProps> = ({ allBookings, rooms, hospitality, onUpdate
   }
 
   const renderBookingCard = (booking: Booking) => (
-    <div key={booking['رقم الحجز']} className="bg-white rounded-lg shadow-md transition-all hover:shadow-xl flex flex-col border-t-4" style={{ borderColor: getStatusColorForBorder(booking['الحالة']) }}>
+    <div key={booking['رقم الحجز']} className="bg-white rounded-lg shadow-md transition-all hover:shadow-xl flex flex-col border-t-4 text-text-dark" style={{ borderColor: getStatusColorForBorder(booking['الحالة']) }}>
       <div className="p-4 border-b">
         <h3 className="text-lg font-bold text-primary truncate">{booking['عنوان الاجتماع']}</h3>
         <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
@@ -198,7 +198,7 @@ const Admin: React.FC<AdminProps> = ({ allBookings, rooms, hospitality, onUpdate
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-primary">إدارة جميع الحجوزات</h1>
+      <h1 className="text-3xl font-bold text-white">إدارة جميع الحجوزات</h1>
       
       <div className="bg-white p-4 rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -235,8 +235,8 @@ const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-3xl font-bold text-primary">إدارة الحجوزات</h1>
-        <button onClick={handleAddBooking} className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-900 transition">
+        <h1 className="text-3xl font-bold text-white">إدارة الحجوزات</h1>
+        <button onClick={handleAddBooking} className="flex items-center gap-2 bg-secondary text-white px-4 py-2 rounded-lg shadow-md hover:bg-teal-600 transition">
             <PlusIcon />
             <span>إضافة حجز جديد</span>
         </button>
@@ -279,12 +279,12 @@ const Bookings: React.FC<BookingsProps> = ({ initialBookings, rooms, hospitality
 
 
       <div>
-        <div className="border-b border-gray-200">
+        <div className="border-b border-gray-700">
           <nav className="-mb-px flex gap-6">
-            <button onClick={() => setActiveTab('upcoming')} className={`py-4 px-1 border-b-2 font-semibold ${activeTab === 'upcoming' ? 'border-secondary text-secondary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('upcoming')} className={`py-4 px-1 border-b-2 font-semibold ${activeTab === 'upcoming' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
               الاجتماعات القادمة ({upcomingBookings.length})
             </button>
-            <button onClick={() => setActiveTab('past')} className={`py-4 px-1 border-b-2 font-semibold ${activeTab === 'past' ? 'border-secondary text-secondary' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+            <button onClick={() => setActiveTab('past')} className={`py-4 px-1 border-b-2 font-semibold ${activeTab === 'past' ? 'border-secondary text-secondary' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
               الاجتماعات الماضية ({pastBookings.length})
             </button>
           </nav>

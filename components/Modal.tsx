@@ -24,7 +24,7 @@ const Modal: React.FC<ModalProps> = ({ onClose, title, children }) => {
             <CloseIcon />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-6 text-text-dark">
           {children}
         </div>
       </div>

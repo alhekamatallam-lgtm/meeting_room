@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Booking } from '../types';
 import { ClockIcon, UsersIcon, ArrowPathIcon, UserCircleIcon, LocationMarkerIcon, CheckCircleIcon } from './icons/Icons';
@@ -39,21 +40,6 @@ const parseCustomDateTime = (dateString?: string): Date | null => {
   return null;
 };
 
-// New timezone-aware function to get current date in Riyadh
-const getRiyadhTodayString = () => {
-    // 'en-CA' gives YYYY-MM-DD format
-    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
-};
-
-// A helper to extract date part from API's custom string format
-const extractDateString = (apiDateString: string): string | null => {
-    const match = apiDateString.match(/(\d{4})\/(\d{2})\/(\d{2})/);
-    if (match) {
-        // Returns YYYY-MM-DD
-        return `${match[1]}-${match[2]}-${match[3]}`;
-    }
-    return null;
-};
 
 // Component to render individual card
 const BookingCard: React.FC<{ booking: Booking, onClick: () => void }> = ({ booking, onClick }) => {
@@ -123,7 +109,7 @@ const BookingCard: React.FC<{ booking: Booking, onClick: () => void }> = ({ book
     return (
         <div 
             onClick={onClick}
-            className={`bg-white rounded-lg shadow-md transition-all hover:shadow-xl hover:-translate-y-1 border-r-4 cursor-pointer flex flex-col ${getStatusColors()} ${isFinished ? 'opacity-70' : ''}`}
+            className={`bg-white rounded-lg shadow-md transition-all hover:shadow-xl hover:-translate-y-1 border-r-4 cursor-pointer flex flex-col text-text-dark ${getStatusColors()} ${isFinished ? 'opacity-70' : ''}`}
         >
             <div className="p-4 border-b flex justify-between items-start gap-2">
                 <div>
@@ -174,12 +160,29 @@ const TodayBookings: React.FC<{ bookings: Booking[], onRefresh: () => void, isRe
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
     const todaysBookings = useMemo(() => {
-        const riyadhToday = getRiyadhTodayString();
+        // Get today's date in 'YYYY-MM-DD' format, according to Riyadh timezone.
+        const riyadhTodayString = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
         
         return bookings
             .filter(b => {
-                const bookingDatePart = extractDateString(b['من']) || extractDateString(b['إلى']);
-                return bookingDatePart === riyadhToday && b['الحالة'] === 'معتمد';
+                // First, ensure the booking is approved.
+                if (b['الحالة'] !== 'معتمد') {
+                    return false;
+                }
+                
+                // Attempt to parse the booking's start date string.
+                const bookingDate = parseCustomDateTime(b['من']);
+                
+                // If the date is invalid or cannot be parsed, exclude it.
+                if (!bookingDate) {
+                    return false;
+                }
+                
+                // Convert the parsed date object into the same 'YYYY-MM-DD' format.
+                const bookingDateString = bookingDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
+                
+                // Compare the booking's date string with today's date string.
+                return bookingDateString === riyadhTodayString;
             })
             .sort((a, b) => {
                 const timeA = parseCustomDateTime(a['من'])?.getTime() || 0;
@@ -205,8 +208,8 @@ const TodayBookings: React.FC<{ bookings: Booking[], onRefresh: () => void, isRe
         <div className="space-y-6">
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-primary">حجوزات اليوم</h1>
-                    <p className="text-lg text-gray-500">{riyadhDateDisplay} (توقيت الرياض)</p>
+                    <h1 className="text-3xl font-bold text-white">حجوزات اليوم</h1>
+                    <p className="text-lg text-gray-400">{riyadhDateDisplay} (توقيت الرياض)</p>
                 </div>
                 <button onClick={onRefresh} disabled={isRefreshing} className="flex items-center gap-2 bg-white text-primary px-4 py-2 rounded-lg shadow-sm border hover:bg-gray-50 disabled:opacity-50">
                     {isRefreshing ? <div className="animate-spin"><ArrowPathIcon /></div> : <ArrowPathIcon />}
